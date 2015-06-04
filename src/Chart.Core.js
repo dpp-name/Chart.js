@@ -207,23 +207,26 @@
 				}
 			}
 		},
-		clone = helpers.clone = function(obj){
+		clone = helpers.clone = function(obj, excludeKey){
 			var objClone = {};
-			each(obj,function(value,key){
-				if (obj.hasOwnProperty(key)){
-					objClone[key] = value;
+			var keys = Object.keys(obj);
+			for (var i = 0, n = keys.length; i < n; i++) {
+				if (excludeKey && keys[i] === excludeKey) {
+					continue;
 				}
-			});
+				objClone[keys[i]] = obj[keys[i]];
+			}
 			return objClone;
 		},
 		extend = helpers.extend = function(base){
-			each(Array.prototype.slice.call(arguments,1), function(extensionObject) {
-				each(extensionObject,function(value,key){
-					if (extensionObject.hasOwnProperty(key)){
-						base[key] = value;
-					}
-				});
-			});
+			for (var i = 1, n = arguments.length; i < n; i++) {
+				var extensionObject = arguments[i];
+				var keys = Object.keys(extensionObject);
+				for (var j = 0, m = keys.length; j < m; j++) {
+					var key = keys[j];
+					base[key] = extensionObject[key];
+				}
+			}
 			return base;
 		},
 		merge = helpers.merge = function(base,master){
@@ -281,7 +284,14 @@
 		inherits = helpers.inherits = function(extensions){
 			//Basic javascript inheritance based on the model created in Backbone.js
 			var parent = this;
-			var ChartElement = (extensions && extensions.hasOwnProperty("constructor")) ? extensions.constructor : function(){ return parent.apply(this, arguments); };
+			function parentCtor() {
+				var args = [];
+				for (var i = 0, n = arguments.length; i < n; i++) {
+					args.push(arguments[i]);
+				}
+				return parent.apply(this, args);
+			}
+			var ChartElement = (extensions && extensions.hasOwnProperty("constructor")) ? extensions.constructor : parentCtor;
 
 			var Surrogate = function(){ this.constructor = ChartElement;};
 			Surrogate.prototype = parent.prototype;
@@ -484,8 +494,8 @@
 			// If templateString is function rather than string-template - call the function for valuesObject
 
 			if(templateString instanceof Function){
-			 	return templateString(valuesObject);
-		 	}
+				return templateString(valuesObject);
+			}
 
 			var cache = {};
 			function tmpl(str, data){
@@ -523,9 +533,10 @@
 		generateLabels = helpers.generateLabels = function(templateString,numberOfSteps,graphMin,stepValue){
 			var labelsArray = new Array(numberOfSteps);
 			if (templateString){
-				each(labelsArray,function(val,index){
-					labelsArray[index] = template(templateString,{value: (graphMin + (stepValue*(index+1)))});
-				});
+				for (var i = 0, n = labelsArray.length; i < n; i++) {
+					var val = labelsArray[i];
+					labelsArray[i] = template(templateString,{value: (graphMin + (stepValue*(index+1)))});
+				}
 			}
 			return labelsArray;
 		},
@@ -813,27 +824,29 @@
 			// Create the events object if it's not already present
 			if (!chartInstance.events) chartInstance.events = {};
 
-			each(arrayOfEvents,function(eventName){
+			for (var i = 0, n = arrayOfEvents.length; i < n; i++) {
+				var eventName = arrayOfEvents[i];
 				chartInstance.events[eventName] = function(){
 					handler.apply(chartInstance, arguments);
 				};
 				addEvent(chartInstance.chart.canvas,eventName,chartInstance.events[eventName]);
-			});
+			}
 		},
 		unbindEvents = helpers.unbindEvents = function (chartInstance, arrayOfEvents) {
-			each(arrayOfEvents, function(handler,eventName){
+			for (var eventName in arrayOfEvents) {
+				var handler = arrayOfEvents[eventName];
 				removeEvent(chartInstance.chart.canvas, eventName, handler);
-			});
+			}
 		},
 		getMaximumWidth = helpers.getMaximumWidth = function(domNode){
 			var container = domNode.parentNode,
-			    padding = parseInt(getStyle(container, 'padding-left')) + parseInt(getStyle(container, 'padding-right'));
+				padding = parseInt(getStyle(container, 'padding-left')) + parseInt(getStyle(container, 'padding-right'));
 			// TODO = check cross browser stuff with this.
 			return container.clientWidth - padding;
 		},
 		getMaximumHeight = helpers.getMaximumHeight = function(domNode){
 			var container = domNode.parentNode,
-			    padding = parseInt(getStyle(container, 'padding-bottom')) + parseInt(getStyle(container, 'padding-top'));
+				padding = parseInt(getStyle(container, 'padding-bottom')) + parseInt(getStyle(container, 'padding-top'));
 			// TODO = check cross browser stuff with this.
 			return container.clientHeight - padding;
 		},
@@ -866,10 +879,11 @@
 		longestText = helpers.longestText = function(ctx,font,arrayOfStrings){
 			ctx.font = font;
 			var longest = 0;
-			each(arrayOfStrings,function(string){
+			for (var i = 0, n = arrayOfStrings.length; i < n; i++) {
+				var string = arrayOfStrings[i];
 				var textWidth = ctx.measureText(string).width;
 				longest = (textWidth > longest) ? textWidth : longest;
-			});
+			}
 			return longest;
 		},
 		drawRoundedRectangle = helpers.drawRoundedRectangle = function(ctx,x,y,width,height,radius){
@@ -1001,11 +1015,12 @@
 					return changed;
 				}
 
-				each(Elements, function(element, index){
-					if (element !== this.activeElements[index]){
+				for (var i = 0, n = Elements.length; i < n; i++) {
+					var element = Elements[i];
+					if (element !== this.activeElements[i]){
 						changed = true;
 					}
-				}, this);
+				}
 				return changed;
 			}).call(this, ChartElements);
 
@@ -1045,17 +1060,18 @@
 								yMax,
 								xMin,
 								yMin;
-							helpers.each(this.datasets, function(dataset){
+							for (var i = 0; i < this.datasets.length; i++) {
+								var dataset = this.dataset[i];
 								dataCollection = dataset.points || dataset.bars || dataset.segments;
 								if (dataCollection[dataIndex] && dataCollection[dataIndex].hasValue()){
 									Elements.push(dataCollection[dataIndex]);
 								}
-							});
+							}
 
-							helpers.each(Elements, function(element) {
+							for (var i = 0; i < Elements.length; i++) {
+								var element = Elements[i];
 								xPositions.push(element.x);
 								yPositions.push(element.y);
-
 
 								//Include any colour information about the element
 								tooltipLabels.push(helpers.template(this.options.multiTooltipTemplate, element));
@@ -1063,8 +1079,7 @@
 									fill: element._saved.fillColor || element.fillColor,
 									stroke: element._saved.strokeColor || element.strokeColor
 								});
-
-							}, this);
+							}
 
 							yMin = min(yPositions);
 							yMax = max(yPositions);
@@ -1104,7 +1119,8 @@
 					}).draw();
 
 				} else {
-					each(ChartElements, function(Element) {
+					for (var i = 0, n = ChartElements.length; i < n; i++) {
+						var Element = ChartElements[i];
 						var tooltipPosition = Element.tooltipPosition();
 						new Chart.Tooltip({
 							x: Math.round(tooltipPosition.x),
@@ -1122,7 +1138,7 @@
 							chart: this.chart,
 							custom: this.options.customTooltips
 						}).draw();
-					}, this);
+					}
 				}
 			}
 			return this;
@@ -1184,28 +1200,29 @@
 			if (!props){
 				extend(this,this._saved);
 			} else {
-				each(props,function(key){
+				for (var key in props) {
 					this[key] = this._saved[key];
-				},this);
+				}
 			}
 			return this;
 		},
 		save : function(){
-			this._saved = clone(this);
-			delete this._saved._saved;
+			this._saved = clone(this, '_saved');
 			return this;
 		},
 		update : function(newProps){
-			each(newProps,function(value,key){
+			for (var key in newProps) {
+				var value = newProps[key];
 				this._saved[key] = this[key];
 				this[key] = value;
-			},this);
+			}
 			return this;
 		},
 		transition : function(props,ease){
-			each(props,function(value,key){
+			for (var key in props) {
+				var value = props[key];
 				this[key] = ((value - this._saved[key]) * ease) + this._saved[key];
-			},this);
+			}
 			return this;
 		},
 		tooltipPosition : function(){
@@ -1526,7 +1543,8 @@
 				ctx.fillText(this.title,this.x + this.xPadding, this.getLineHeight(0));
 
 				ctx.font = this.font;
-				helpers.each(this.labels,function(label,index){
+				for (var index = 0, n = this.labels.length; index < n; index++) {
+					var label = this.labels[index];
 					ctx.fillStyle = this.textColor;
 					ctx.fillText(label,this.x + this.xPadding + this.fontSize + 3, this.getLineHeight(index + 1));
 
@@ -1539,9 +1557,7 @@
 
 					ctx.fillStyle = this.legendColors[index].fill;
 					ctx.fillRect(this.x + this.xPadding, this.getLineHeight(index + 1) - this.fontSize/2, this.fontSize, this.fontSize);
-
-
-				},this);
+				}
 			}
 		}
 	});
@@ -1709,7 +1725,8 @@
 			if (this.display){
 				ctx.fillStyle = this.textColor;
 				ctx.font = this.font;
-				each(this.yLabels,function(labelString,index){
+				for (var index = 0, n = this.yLabels.length; index < n; index++) {
+					var labelString = this.yLabels[index];
 					var yLabelCenter = this.endPoint - (yLabelGap * index),
 						linePositionY = Math.round(yLabelCenter),
 						drawHorizontalLine = this.showHorizontalLines;
@@ -1755,10 +1772,10 @@
 					ctx.lineTo(xStart, linePositionY);
 					ctx.stroke();
 					ctx.closePath();
+				}
 
-				},this);
-
-				each(this.xLabels,function(label,index){
+				for (var index = 0, n = this.xLabels.length; index < n; index++) {
+					var label = this.xLabels[index];
 					var xPos = this.calculateX(index) + aliasPixel(this.lineWidth),
 						// Check to see if line/bar here and decide where to place the line
 						linePos = this.calculateX(index - (this.offsetGridLines ? 0.5 : 0)) + aliasPixel(this.lineWidth),
@@ -1811,7 +1828,7 @@
 					ctx.textBaseline = (isRotated) ? "middle" : "top";
 					ctx.fillText(label, 0, 0);
 					ctx.restore();
-				},this);
+				}
 
 			}
 		}
@@ -1980,7 +1997,8 @@
 		draw: function(){
 			if (this.display){
 				var ctx = this.ctx;
-				each(this.yLabels, function(label, index){
+				for (var index = 0, n = this.yLabels.length; index < n; index++) {
+					var label = this.yLabels[index];
 					// Don't draw a centre value
 					if (index > 0){
 						var yCenterOffset = index * (this.drawingArea/this.steps),
@@ -2030,7 +2048,7 @@
 							ctx.fillText(label, this.xCenter, yHeight);
 						}
 					}
-				}, this);
+				}
 
 				if (!this.lineArc){
 					ctx.lineWidth = this.angleLineWidth;
@@ -2171,13 +2189,14 @@
 		return function(){
 			clearTimeout(timeout);
 			timeout = setTimeout(function(){
-				each(Chart.instances,function(instance){
+				for (var i = 0, n = Chart.instances.length; i < n; i++) {
+					var instance = Chart.instances[i];
 					// If the responsive flag is set in the chart instance config
 					// Cascade the resize event down to the chart.
 					if (instance.options.responsive){
 						instance.resize(instance.render, true);
 					}
-				});
+				};
 			}, 50);
 		};
 	})());

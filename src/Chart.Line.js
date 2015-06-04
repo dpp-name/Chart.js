@@ -81,19 +81,25 @@
 			if (this.options.showTooltips){
 				helpers.bindEvents(this, this.options.tooltipEvents, function(evt){
 					var activePoints = (evt.type !== 'mouseout') ? this.getPointsAtEvent(evt) : [];
-					this.eachPoints(function(point){
-						point.restore(['fillColor', 'strokeColor']);
-					});
-					helpers.each(activePoints, function(activePoint){
+					for (var i = 0, n = this.datasets.length; i < n; i++) {
+						var dataset = this.datasets[i];
+						for (var j = 0, m = dataset.points.length; j < m; j++) {
+							var point = dataset.points[j];
+							point.restore(['fillColor', 'strokeColor']);
+						}
+					}
+					for (var i = 0, n = activePoints.length; i < n; i++) {
+						var activePoint = activePoints[i];
 						activePoint.fillColor = activePoint.highlightFill;
 						activePoint.strokeColor = activePoint.highlightStroke;
-					});
+					}
 					this.showTooltip(activePoints);
 				});
 			}
 
 			//Iterate through each of the datasets, and build this into a property of the chart
-			helpers.each(data.datasets,function(dataset){
+			for (var i = 0, n = data.datasets.length; i < n; i++) {
+				var dataset = data.datasets[i];
 
 				var datasetObject = {
 					label : dataset.label || null,
@@ -107,7 +113,9 @@
 				this.datasets.push(datasetObject);
 
 
-				helpers.each(dataset.data,function(dataPoint,index){
+				for (var index = 0, m = dataset.data.length; index < m; index++) {
+					var dataPoint = dataset.data[index];
+
 					//Add a new point for each piece of data, passing any required data to draw.
 					datasetObject.points.push(new this.PointClass({
 						value : dataPoint,
@@ -118,20 +126,22 @@
 						highlightFill : dataset.pointHighlightFill || dataset.pointColor,
 						highlightStroke : dataset.pointHighlightStroke || dataset.pointStrokeColor
 					}));
-				},this);
+				}
 
 				this.buildScale(data.labels);
 
 
-				this.eachPoints(function(point, index){
+				// calling this.eachPoints during iteration over datasets call it many times for each point
+				for (var index = 0, m = datasetObject.points.length; index < m; index++) {
+					var point = datasetObject.points[index];
 					helpers.extend(point, {
 						x: this.scale.calculateX(index),
 						y: this.scale.endPoint
 					});
 					point.save();
-				}, this);
+				}
 
-			},this);
+			}
 
 
 			this.render();
@@ -139,40 +149,42 @@
 		update : function(){
 			this.scale.update();
 			// Reset any highlight colours before updating.
-			helpers.each(this.activeElements, function(activeElement){
+			for (var i = 0, n = this.activeElements.length; i < n; i++) {
+				var activeElement = this.activeElements[i];
 				activeElement.restore(['fillColor', 'strokeColor']);
-			});
-			this.eachPoints(function(point){
-				point.save();
-			});
+			}
+			for (var i = 0, n = this.datasets.length; i < n; i++) {
+				var dataset = this.datasets[i];
+				for (var j = 0, m = dataset.points.length; j < m; j++) {
+					var point = dataset.points[j];
+					point.save();
+				}
+			}
 			this.render();
-		},
-		eachPoints : function(callback){
-			helpers.each(this.datasets,function(dataset){
-				helpers.each(dataset.points,callback,this);
-			},this);
 		},
 		getPointsAtEvent : function(e){
 			var pointsArray = [],
 				eventPosition = helpers.getRelativePosition(e);
-			helpers.each(this.datasets,function(dataset){
-				helpers.each(dataset.points,function(point){
+			for (var i = 0, n = this.datasets.length; i < n; i++) {
+				var dataset = this.datasets[i];
+				for (var j = 0, m = dataset.points.length; j < m; j++) {
+					var point = dataset.points[j];
 					if (point.inRange(eventPosition.x,eventPosition.y)) pointsArray.push(point);
-				});
-			},this);
+				}
+			}
 			return pointsArray;
 		},
 		buildScale : function(labels){
 			var self = this;
 
-			var dataTotal = function(){
-				var values = [];
-				self.eachPoints(function(point){
-					values.push(point.value);
-				});
-
-				return values;
-			};
+			var dataTotal = [];
+			for (var i = 0, n = this.datasets.length; i < n; i++) {
+				var dataset = this.datasets[i];
+				for (var j = 0, m = dataset.points.length; j < m; j++) {
+					var point = dataset.points[j];
+					dataTotal.push(point.value);
+				}
+			}
 
 			var scaleOptions = {
 				templateString : this.options.scaleLabel,
@@ -189,7 +201,7 @@
 				integersOnly : this.options.scaleIntegersOnly,
 				calculateYRange : function(currentHeight){
 					var updatedRanges = helpers.calculateScaleRange(
-						dataTotal(),
+						dataTotal,
 						currentHeight,
 						this.fontSize,
 						this.beginAtZero,
@@ -226,7 +238,8 @@
 		addData : function(valuesArray,label){
 			//Map the values array for each of the datasets
 
-			helpers.each(valuesArray,function(value,datasetIndex){
+			for (var datasetIndex = 0, n = valuesArray.length; datasetIndex < n; datasetIndex++) {
+				var value = valuesArray[datasetIndex];
 				//Add a new point for each piece of data, passing any required data to draw.
 				this.datasets[datasetIndex].points.push(new this.PointClass({
 					value : value,
@@ -237,7 +250,7 @@
 					strokeColor : this.datasets[datasetIndex].pointStrokeColor,
 					fillColor : this.datasets[datasetIndex].pointColor
 				}));
-			},this);
+			}
 
 			this.scale.addXLabel(label);
 			//Then re-render the chart.
@@ -246,9 +259,10 @@
 		removeData : function(){
 			this.scale.removeXLabel();
 			//Then re-render the chart.
-			helpers.each(this.datasets,function(dataset){
+			for (var i = 0, n = this.datasets.length; i < n; i++) {
+				var dataset = this.datasets[i];
 				dataset.points.shift();
-			},this);
+			}
 			this.update();
 		},
 		reflow : function(){
@@ -278,26 +292,36 @@
 			this.scale.draw(easingDecimal);
 
 
-			helpers.each(this.datasets,function(dataset){
-				var pointsWithValues = helpers.where(dataset.points, hasValue);
+			for (var i = 0, m = this.datasets.length; i < m; i++) {
+				var dataset = this.datasets[i];
+
+				var pointsWithValues = [];
+				for (var j = 0, n = dataset.points.length; j < n; j++) {
+					var point = dataset.points[j];
+					if (point.value !== null) {
+						pointsWithValues.push(point);
+					}
+				}
 
 				//Transition each point first so that the line and point drawing isn't out of sync
 				//We can use this extra loop to calculate the control points of this dataset also in this loop
 
-				helpers.each(dataset.points, function(point, index){
+				for (var index = 0, n = dataset.points.length; index < n; index++) {
+					var point = dataset.points[index];
 					if (point.hasValue()){
 						point.transition({
 							y : this.scale.calculateY(point.value),
 							x : this.scale.calculateX(index)
 						}, easingDecimal);
 					}
-				},this);
+				}
 
 
 				// Control points need to be calculated in a seperate loop, because we need to know the current x/y of the point
 				// This would cause issues when there is no animation, because the y of the next point would be 0, so beziers would be skewed
 				if (this.options.bezierCurve){
-					helpers.each(pointsWithValues, function(point, index){
+					for (var index = 0, n = pointsWithValues.length; index < n; index++) {
+						var point = pointsWithValues[index];
 						var tension = (index > 0 && index < pointsWithValues.length - 1) ? this.options.bezierCurveTension : 0;
 						point.controlPoints = helpers.splineCurve(
 							previousPoint(point, pointsWithValues, index),
@@ -323,7 +347,7 @@
 						else if (point.controlPoints.inner.y < this.scale.startPoint){
 							point.controlPoints.inner.y = this.scale.startPoint;
 						}
-					},this);
+					}
 				}
 
 
@@ -332,7 +356,8 @@
 				ctx.strokeStyle = dataset.strokeColor;
 				ctx.beginPath();
 
-				helpers.each(pointsWithValues, function(point, index){
+				for (var index = 0, n = pointsWithValues.length; index < n; index++) {
+					var point = pointsWithValues[index];
 					if (index === 0){
 						ctx.moveTo(point.x, point.y);
 					}
@@ -353,7 +378,7 @@
 							ctx.lineTo(point.x,point.y);
 						}
 					}
-				}, this);
+				}
 
 				ctx.stroke();
 
@@ -369,10 +394,11 @@
 				//Now draw the points over the line
 				//A little inefficient double looping, but better than the line
 				//lagging behind the point positions
-				helpers.each(pointsWithValues,function(point){
+				for (var index = 0, n = pointsWithValues.length; index < n; index++) {
+					var point = pointsWithValues[index];
 					point.draw();
-				});
-			},this);
+				}
+			}
 		}
 	});
 
